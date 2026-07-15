@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Star Atlas — A Galaxies Puzzle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-bg: #11142b;
+    --ink-bg-2: #171b38;
+    --parchment: #efe7d3;
+    --parchment-2: #e6dcc2;
+    --brass: #c08a3e;
+    --brass-bright: #e0ab5c;
+    --starlight: #8fb1d4;
+    --ember: #c2503d;
+    --line-dark: #2b2f4d;
+    --ink-text: #2c2717;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0;
+    background: radial-gradient(ellipse at 50% -10%, #1c2148 0%, var(--ink-bg) 55%, #0b0d1e 100%);
+    color: var(--starlight);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+  .stars-bg{
+    position: fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+  }
+  #app{
+    position: relative; z-index:1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 56px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header{ text-align: center; margin-bottom: 22px; }
+  .chart-no{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--brass-bright);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 34px;
+    letter-spacing: 0.01em;
+    color: #f4efe1;
+    margin: 0 0 8px;
+  }
+  .subtitle{
+    font-size: 14px;
+    color: var(--starlight);
+    opacity: 0.85;
+    margin: 0;
+    font-style: italic;
+    font-family: 'Fraunces', serif;
+  }
+
+  .toolbar{
+    display:flex; flex-wrap: wrap; gap: 10px; justify-content:center;
+    margin-bottom: 18px;
+  }
+  .btn{
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-bg);
+    background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+    border: 1px solid #8a5f28;
+    border-radius: 7px;
+    padding: 9px 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #6f4a1e, 0 3px 6px rgba(0,0,0,0.35);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .btn:hover{ filter: brightness(1.05); }
+  .btn:active{ transform: translateY(2px); box-shadow: 0 0 0 #6f4a1e, 0 1px 3px rgba(0,0,0,0.35); }
+  .btn.secondary{
+    background: linear-gradient(180deg, #2a2f52, #1d2140);
+    color: var(--parchment);
+    border: 1px solid #3a3f66;
+    box-shadow: 0 2px 0 #12142a, 0 3px 6px rgba(0,0,0,0.35);
+  }
+  .btn.toggled{
+    background: linear-gradient(180deg, var(--ember), #93392a);
+    color: #fbe9e4;
+    border: 1px solid #7a2e22;
+  }
+  select{
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600;
+    background: #1d2140;
+    color: var(--parchment);
+    border: 1px solid #3a3f66;
+    border-radius: 7px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+
+  .status-line{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    min-height: 18px;
+    margin-bottom: 14px;
+    text-align: center;
+    color: var(--starlight);
+  }
+  .status-line.ok{ color: #8fd6a0; }
+  .status-line.bad{ color: var(--ember); }
+
+  .card{
+    background: var(--parchment);
+    border: 3px solid var(--brass);
+    border-radius: 4px;
+    padding: 18px;
+    box-shadow:
+      0 0 0 1px #7a5a2a inset,
+      0 20px 50px rgba(0,0,0,0.45);
+    position: relative;
+  }
+  .card::before, .card::after,
+  .card .corner-tl, .card .corner-br{
+    content: ''; position:absolute; width: 16px; height:16px;
+    border: 2px solid var(--brass); opacity: 0.85;
+  }
+  .card::before{ top:6px; left:6px; border-right:none; border-bottom:none; }
+  .card::after{ bottom:6px; right:6px; border-left:none; border-top:none; }
+
+  svg#board{ display:block; touch-action: none; user-select: none; }
+
+  .legend-hint{
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    color: var(--starlight);
+    opacity: 0.75;
+    text-align:center;
+    max-width: 460px;
+    margin: 18px auto 0;
+    line-height: 1.5;
+  }
+  .active-swatch{
+    display:inline-block; width:11px; height:11px; border-radius:50%;
+    vertical-align: -1px; margin: 0 3px; border: 1px solid rgba(0,0,0,0.3);
+  }
+
+  footer{
+    margin-top: 26px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #5c6a94;
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<canvas class="stars-bg" id="starsBg"></canvas>
+<div id="app">
+  <header>
+    <p class="chart-no" id="chartNo">Chart No. 001</p>
+    <h1>Star Atlas</h1>
+    <p class="subtitle">Chart the galaxies. Every cluster mirrors its own star.</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="sizeSelect">
+      <option value="small">Small chart</option>
+      <option value="medium" selected>Medium chart</option>
+      <option value="large">Large chart</option>
+    </select>
+    <button class="btn" id="newBtn">New Chart</button>
+    <button class="btn secondary" id="eraseBtn">Eraser</button>
+    <button class="btn secondary" id="clearBtn">Clear All</button>
+    <button class="btn secondary" id="checkBtn">Check Chart</button>
+  </div>
+
+  <div class="status-line" id="statusLine">Select a galaxy's star, then drag across its territory.</div>
+
+  <div class="card">
+    <svg id="board"></svg>
+  </div>
+
+  <p class="legend-hint">Tap a gold star to choose it as your active galaxy <span class="active-swatch" id="activeSwatchDemo" style="background:#c08a3e"></span>, then drag across the squares that belong to it. Each galaxy's territory must be one connected shape, and mirror itself exactly through its star.</p>
+
+  <footer>a small paper puzzle, generated fresh each time</footer>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------
+   RNG
+--------------------------------------------------------------------- */
+function makeRNG(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ---------------------------------------------------------------------
+   GALAXIES PUZZLE GENERATOR
+   Cells are indexed (r,c). Centers are stored in "doubled" coordinates
+   (Cy,Cx) where a cell (r,c) has doubled center (2r+1, 2c+1). This lets
+   galaxy centers land on cell centers, edge midpoints, or corners.
+--------------------------------------------------------------------- */
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+
+function mirrorOf(N, r, c, Cy, Cx) {
+  const py = 2 * r + 1, px = 2 * c + 1;
+  const my = 2 * Cy - py, mx = 2 * Cx - px;
+  if ((my - 1) % 2 !== 0 || (mx - 1) % 2 !== 0) return null;
+  const mr = (my - 1) / 2, mc = (mx - 1) / 2;
+  if (mr < 0 || mr >= N || mc < 0 || mc >= N) return null;
+  return [mr, mc];
+}
+
+function phase1BalancedGrowth(N, numGalaxies, rng, region, centers) {
+  const usedCenters = new Set();
+  let attempts = 0;
+  while (centers.length < numGalaxies && attempts < numGalaxies * 60) {
+    attempts++;
+    const Cy = 1 + Math.floor(rng() * (2 * N - 1));
+    const Cx = 1 + Math.floor(rng() * (2 * N - 1));
+    const key = Cy + ',' + Cx;
+    if (usedCenters.has(key)) continue;
+    let tooClose = false;
+    for (const c of centers) {
+      const d = Math.abs(c[0] - Cy) + Math.abs(c[1] - Cx);
+      if (d < 3) { tooClose = true; break; }
+    }
+    if (tooClose) continue;
+    usedCenters.add(key);
+    centers.push([Cy, Cx]);
+  }
+
+  centers.forEach((c, gi) => {
+    const [Cy, Cx] = c;
+    const r = Math.min(N - 1, Math.max(0, Math.round((Cy - 1) / 2)));
+    const cc = Math.min(N - 1, Math.max(0, Math.round((Cx - 1) / 2)));
+    if (region[r][cc] === -1) {
+      const m = mirrorOf(N, r, cc, Cy, Cx);
+      if (m && (m[0] === r && m[1] === cc)) {
+        region[r][cc] = gi;
+      } else if (m && region[m[0]][m[1]] === -1 && Math.abs(m[0]-r) + Math.abs(m[1]-cc) === 1) {
+        region[r][cc] = gi;
+        region[m[0]][m[1]] = gi;
+      }
+      // otherwise: leave unseeded. It'll either get picked up by the
+      // regular growth frontier of a neighboring already-seeded galaxy,
+      // or get pruned as a ghost and patched fresh in phase 2.
+    }
+  });
+
+  let changed = true, iterations = 0;
+  while (changed && iterations < N * N * 10) {
+    changed = false;
+    iterations++;
+    const order = shuffle(centers.map((_, i) => i), rng);
+    for (const gi of order) {
+      const [Cy, Cx] = centers[gi];
+      const frontier = [];
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        if (region[r][c] !== gi) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+          if (region[nr][nc] === -1) frontier.push([nr, nc]);
+        }
+      }
+      if (!frontier.length) continue;
+      shuffle(frontier, rng);
+      for (const [r, c] of frontier) {
+        if (region[r][c] !== -1) continue;
+        const m = mirrorOf(N, r, c, Cy, Cx);
+        if (!m) continue;
+        const [mr, mc] = m;
+        if (region[mr][mc] !== -1) continue;
+        if (!mirrorIsConnectable(N, region, gi, r, c, mr, mc)) continue;
+        region[r][c] = gi;
+        region[mr][mc] = gi;
+        changed = true;
+        break;
+      }
+    }
+  }
+}
+
+// The frontier cell (r,c) is already known adjacent to the region. This
+// checks that the mirror cell (mr,mc) is ALSO adjacent to the (updated)
+// region -- either equal/adjacent to (r,c) itself, or adjacent to some
+// other existing cell of gi -- so the region never splits into two
+// symmetric-but-disconnected halves.
+function mirrorIsConnectable(N, region, gi, r, c, mr, mc) {
+  if (mr === r && mc === c) return true;
+  if (Math.abs(mr - r) + Math.abs(mc - c) === 1) return true;
+  for (const [dr, dc] of DIRS) {
+    const nr = mr + dr, nc = mc + dc;
+    if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+    if (region[nr][nc] === gi) return true;
+  }
+  return false;
+}
+
+function phase2PatchLeftovers(N, rng, region, centers, maxPatchSize) {
+  const leftover = [];
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (region[r][c] === -1) leftover.push([r, c]);
+  shuffle(leftover, rng);
+
+  for (const [r0, c0] of leftover) {
+    if (region[r0][c0] !== -1) continue;
+    const gi = centers.length;
+    let Cy = 2 * r0 + 1, Cx = 2 * c0 + 1;
+    const neighborOptions = [];
+    for (const [dr, dc] of DIRS) {
+      const nr = r0 + dr, nc = c0 + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      if (region[nr][nc] !== -1) continue;
+      const my = (2*r0+1) + (2*nr+1), mx = (2*c0+1) + (2*nc+1);
+      neighborOptions.push([my/2, mx/2, nr, nc]);
+    }
+    let seedCells = [[r0, c0]];
+    if (neighborOptions.length && rng() < 0.8) {
+      const [my, mx, nr, nc] = neighborOptions[Math.floor(rng() * neighborOptions.length)];
+      Cy = my; Cx = mx;
+      seedCells = [[r0, c0], [nr, nc]];
+    }
+    centers.push([Cy, Cx]);
+    let mySize = 0;
+    for (const [r, c] of seedCells) { region[r][c] = gi; mySize++; }
+    const target = 1 + Math.floor(rng() * maxPatchSize);
+    let grew = true;
+    while (grew && mySize < target) {
+      grew = false;
+      const frontier = [];
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        if (region[r][c] !== gi) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+          if (region[nr][nc] === -1) frontier.push([nr, nc]);
+        }
+      }
+      shuffle(frontier, rng);
+      for (const [r, c] of frontier) {
+        if (mySize >= target) break;
+        if (region[r][c] !== -1) continue;
+        const m = mirrorOf(N, r, c, Cy, Cx);
+        if (!m) continue;
+        const [mr, mc] = m;
+        if (region[mr][mc] !== -1) continue;
+        if (!mirrorIsConnectable(N, region, gi, r, c, mr, mc)) continue;
+        region[r][c] = gi; mySize++;
+        if (mr !== r || mc !== c) { region[mr][mc] = gi; mySize++; }
+        grew = true;
+      }
+    }
+  }
+}
+
+function pruneGhostCenters(N, region, centers) {
+  const sizes = new Array(centers.length).fill(0);
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (region[r][c] >= 0) sizes[region[r][c]]++;
+  const remap = new Array(centers.length).fill(-1);
+  const newCenters = [];
+  for (let gi = 0; gi < centers.length; gi++) {
+    if (sizes[gi] > 0) { remap[gi] = newCenters.length; newCenters.push(centers[gi]); }
+  }
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    if (region[r][c] >= 0) region[r][c] = remap[region[r][c]];
+  }
+  centers.length = 0;
+  centers.push(...newCenters);
+}
+
+function generatePuzzle(N, numGalaxies, seed) {
+  const rng = makeRNG(seed);
+  const region = Array.from({ length: N }, () => new Array(N).fill(-1));
+  const centers = [];
+  phase1BalancedGrowth(N, numGalaxies, rng, region, centers);
+  pruneGhostCenters(N, region, centers);
+  phase2PatchLeftovers(N, rng, region, centers, Math.max(3, Math.round(N * N / numGalaxies / 2)));
+  return { N, region, centers };
+}
+
+/* ---------------------------------------------------------------------
+   SOLUTION VALIDATION (independent of the generator's own solution —
+   accepts ANY valid symmetric partition, not just the one generated)
+--------------------------------------------------------------------- */
+function validateSolution(N, centers, assignment) {
+  // assignment[r][c] = galaxy index or -1 if unpainted
+  const problems = { allAssigned: true, invalidGalaxies: new Set() };
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    if (assignment[r][c] === -1) problems.allAssigned = false;
+  }
+  const cellsByGalaxy = centers.map(() => []);
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const gi = assignment[r][c];
+    if (gi >= 0) cellsByGalaxy[gi].push([r, c]);
+  }
+  centers.forEach((center, gi) => {
+    const cells = cellsByGalaxy[gi];
+    if (cells.length === 0) return; // nothing painted for this galaxy yet
+    const cellSet = new Set(cells.map(([r,c]) => r + ',' + c));
+    // symmetry check
+    let symmetric = true;
+    for (const [r, c] of cells) {
+      const m = mirrorOf(N, r, c, center[0], center[1]);
+      if (!m || !cellSet.has(m[0] + ',' + m[1])) { symmetric = false; break; }
+    }
+    // connectivity check
+    let connected = true;
+    if (cells.length > 0) {
+      const visited = new Set();
+      const stack = [cells[0]];
+      visited.add(cells[0][0] + ',' + cells[0][1]);
+      while (stack.length) {
+        const [r, c] = stack.pop();
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          const key = nr + ',' + nc;
+          if (cellSet.has(key) && !visited.has(key)) {
+            visited.add(key);
+            stack.push([nr, nc]);
+          }
+        }
+      }
+      connected = visited.size === cells.length;
+    }
+    if (!symmetric || !connected) problems.invalidGalaxies.add(gi);
+  });
+  problems.solved = problems.allAssigned && problems.invalidGalaxies.size === 0
+    && centers.every((_, gi) => cellsByGalaxy[gi].length > 0);
+  return problems;
+}
+
+/* ---------------------------------------------------------------------
+   COLOR PALETTE — muted ink-wash hues via golden-angle rotation
+--------------------------------------------------------------------- */
+function galaxyColor(gi) {
+  const hue = (gi * 137.508) % 360;
+  return `hsl(${hue.toFixed(1)}, 42%, 72%)`;
+}
+function galaxyColorStrong(gi) {
+  const hue = (gi * 137.508) % 360;
+  return `hsl(${hue.toFixed(1)}, 46%, 52%)`;
+}
+
+/* ---------------------------------------------------------------------
+   GAME STATE + RENDERING
+--------------------------------------------------------------------- */
+const SIZE_PRESETS = {
+  small:  { N: 7,  divisor: 9 },
+  medium: { N: 9,  divisor: 9 },
+  large:  { N: 11, divisor: 9 },
+};
+
+let state = null;
+let chartCount = 0;
+
+function newGame(sizeKey) {
+  const preset = SIZE_PRESETS[sizeKey];
+  const numGalaxies = Math.max(3, Math.round((preset.N * preset.N) / preset.divisor));
+  const seed = Math.floor(Math.random() * 4294967295);
+  const puzzle = generatePuzzle(preset.N, numGalaxies, seed);
+  chartCount++;
+  document.getElementById('chartNo').textContent =
+    'Chart No. ' + String(chartCount).padStart(3, '0');
+  state = {
+    N: puzzle.N,
+    centers: puzzle.centers,
+    assignment: Array.from({ length: puzzle.N }, () => new Array(puzzle.N).fill(-1)),
+    activeGalaxy: null,
+    eraseMode: false,
+    painting: false,
+    lastPaintedCell: null,
+  };
+  setStatus("Select a galaxy's star, then drag across its territory.", null);
+  render();
+}
+
+function setStatus(text, kind) {
+  const el = document.getElementById('statusLine');
+  el.textContent = text;
+  el.classList.remove('ok', 'bad');
+  if (kind) el.classList.add(kind);
+}
+
+const CELL = 40;
+const PAD = 18;
+
+function render() {
+  const svg = document.getElementById('board');
+  const N = state.N;
+  const size = N * CELL + PAD * 2;
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.innerHTML = '';
+
+  const ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    const e = document.createElementNS(ns, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  const gridGroup = el('g', {});
+  svg.appendChild(gridGroup);
+
+  // cell fills
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const gi = state.assignment[r][c];
+      const fill = gi >= 0 ? galaxyColor(gi) : '#f7f2e4';
+      const rect = el('rect', {
+        x: PAD + c * CELL, y: PAD + r * CELL,
+        width: CELL, height: CELL,
+        fill,
+        stroke: 'none',
+        'data-r': r, 'data-c': c,
+        class: 'cell-fill',
+      });
+      if (gi >= 0 && state.flaggedGalaxies && state.flaggedGalaxies.has(gi)) {
+        rect.setAttribute('stroke', 'var(--ember)');
+        rect.setAttribute('stroke-width', '1.5');
+        rect.setAttribute('stroke-dasharray', '4 3');
+      }
+      gridGroup.appendChild(rect);
+    }
+  }
+
+  // thin grid lines
+  for (let i = 0; i <= N; i++) {
+    gridGroup.appendChild(el('line', {
+      x1: PAD, y1: PAD + i * CELL, x2: PAD + N * CELL, y2: PAD + i * CELL,
+      stroke: '#c9bd9a', 'stroke-width': 1,
+    }));
+    gridGroup.appendChild(el('line', {
+      x1: PAD + i * CELL, y1: PAD, x2: PAD + i * CELL, y2: PAD + N * CELL,
+      stroke: '#c9bd9a', 'stroke-width': 1,
+    }));
+  }
+
+  // thicker boundary lines between differently-assigned cells (visual aid)
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const gi = state.assignment[r][c];
+      if (c < N - 1) {
+        const giRight = state.assignment[r][c + 1];
+        if (gi !== giRight && gi >= 0 && giRight >= 0) {
+          gridGroup.appendChild(el('line', {
+            x1: PAD + (c + 1) * CELL, y1: PAD + r * CELL,
+            x2: PAD + (c + 1) * CELL, y2: PAD + (r + 1) * CELL,
+            stroke: '#7a6a48', 'stroke-width': 2.5,
+          }));
+        }
+      }
+      if (r < N - 1) {
+        const giDown = state.assignment[r + 1][c];
+        if (gi !== giDown && gi >= 0 && giDown >= 0) {
+          gridGroup.appendChild(el('line', {
+            x1: PAD + c * CELL, y1: PAD + (r + 1) * CELL,
+            x2: PAD + (c + 1) * CELL, y2: PAD + (r + 1) * CELL,
+            stroke: '#7a6a48', 'stroke-width': 2.5,
+          }));
+        }
+      }
+    }
+  }
+
+  // outer border
+  gridGroup.appendChild(el('rect', {
+    x: PAD, y: PAD, width: N * CELL, height: N * CELL,
+    fill: 'none', stroke: '#5a4a28', 'stroke-width': 2.5,
+  }));
+
+  // dots (stars) for each galaxy center
+  state.centers.forEach((center, gi) => {
+    const [Cy, Cx] = center;
+    const px = PAD + (Cx / 2) * CELL;
+    const py = PAD + (Cy / 2) * CELL;
+    const isActive = state.activeGalaxy === gi;
+    // larger invisible hit target for touch
+    const hit = el('circle', {
+      cx: px, cy: py, r: 13,
+      fill: 'transparent',
+      class: 'dot-hit', 'data-gi': gi,
+      style: 'cursor:pointer',
+    });
+    gridGroup.appendChild(hit);
+    if (isActive) {
+      gridGroup.appendChild(el('circle', {
+        cx: px, cy: py, r: 10.5,
+        fill: 'none', stroke: 'var(--ember)', 'stroke-width': 2,
+        class: 'dot-ring',
+      }));
+    }
+    const starPath = starPathAt(px, py, isActive ? 7.5 : 6.5);
+    gridGroup.appendChild(el('path', {
+      d: starPath,
+      fill: isActive ? '#e0ab5c' : galaxyColorStrong(gi),
+      stroke: '#5a4218', 'stroke-width': 0.6,
+      style: 'pointer-events:none',
+    }));
+  });
+
+  attachInteraction(svg);
+}
+
+function starPathAt(cx, cy, r) {
+  const points = [];
+  const spikes = 4;
+  const inner = r * 0.42;
+  for (let i = 0; i < spikes * 2; i++) {
+    const rad = i % 2 === 0 ? r : inner;
+    const angle = (Math.PI / spikes) * i - Math.PI / 2;
+    points.push([cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)]);
+  }
+  return 'M ' + points.map(p => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join(' L ') + ' Z';
+}
+
+function cellFromPoint(svg, clientX, clientY) {
+  const rect = svg.getBoundingClientRect();
+  const scaleX = svg.viewBox.baseVal.width / rect.width;
+  const scaleY = svg.viewBox.baseVal.height / rect.height;
+  const x = (clientX - rect.left) * scaleX;
+  const y = (clientY - rect.top) * scaleY;
+  const c = Math.floor((x - PAD) / CELL);
+  const r = Math.floor((y - PAD) / CELL);
+  if (r < 0 || r >= state.N || c < 0 || c >= state.N) return null;
+  return [r, c];
+}
+
+function paintCell(r, c) {
+  if (state.eraseMode) {
+    if (state.assignment[r][c] !== -1) {
+      state.assignment[r][c] = -1;
+      refreshCellFill(r, c);
+    }
+  } else if (state.activeGalaxy !== null) {
+    if (state.assignment[r][c] !== state.activeGalaxy) {
+      state.assignment[r][c] = state.activeGalaxy;
+      refreshCellFill(r, c);
+    }
+  }
+}
+
+function refreshCellFill(r, c) {
+  // cheap full redraw of boundary lines requires re-render; keep simple
+  render();
+}
+
+function attachInteraction(svg) {
+  svg.onpointerdown = (e) => {
+    const target = e.target;
+    if (target.classList.contains('dot-hit')) {
+      state.activeGalaxy = parseInt(target.getAttribute('data-gi'), 10);
+      const c = state.centers[state.activeGalaxy];
+      setStatus('Painting galaxy at (' + ((c[0]-1)/2 + 1) + ', ' + ((c[1]-1)/2 + 1) + ')', null);
+      render();
+      return;
+    }
+    const cell = cellFromPoint(svg, e.clientX, e.clientY);
+    if (!cell) return;
+    if (state.activeGalaxy === null && !state.eraseMode) {
+      setStatus('Tap a gold star first to choose which galaxy to paint.', 'bad');
+      return;
+    }
+    state.painting = true;
+    state.lastPaintedCell = cell;
+    svg.setPointerCapture(e.pointerId);
+    paintCell(cell[0], cell[1]);
+  };
+  svg.onpointermove = (e) => {
+    if (!state.painting) return;
+    const cell = cellFromPoint(svg, e.clientX, e.clientY);
+    if (!cell) return;
+    if (state.lastPaintedCell && cell[0] === state.lastPaintedCell[0] && cell[1] === state.lastPaintedCell[1]) return;
+    state.lastPaintedCell = cell;
+    paintCell(cell[0], cell[1]);
+  };
+  svg.onpointerup = () => { state.painting = false; };
+  svg.onpointerleave = () => { state.painting = false; };
+}
+
+function checkSolution() {
+  const problems = validateSolution(state.N, state.centers, state.assignment);
+  state.flaggedGalaxies = problems.invalidGalaxies;
+  if (problems.solved) {
+    setStatus('✨ Solved! Every galaxy mirrors its own star.', 'ok');
+    celebrate();
+  } else if (!problems.allAssigned) {
+    setStatus('Not quite — some squares are still unpainted.', 'bad');
+  } else if (problems.invalidGalaxies.size > 0) {
+    setStatus('Not quite — some galaxies aren\u2019t symmetric or connected yet.', 'bad');
+  } else {
+    setStatus('Not quite — every star needs its own territory.', 'bad');
+  }
+  render();
+}
+
+function celebrate() {
+  const svg = document.getElementById('board');
+  const ns = 'http://www.w3.org/2000/svg';
+  const centers = state.centers;
+  for (let i = 0; i < centers.length - 1; i++) {
+    const [Ay, Ax] = centers[i];
+    const [By, Bx] = centers[i + 1];
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', PAD + (Ax / 2) * CELL);
+    line.setAttribute('y1', PAD + (Ay / 2) * CELL);
+    line.setAttribute('x2', PAD + (Bx / 2) * CELL);
+    line.setAttribute('y2', PAD + (By / 2) * CELL);
+    line.setAttribute('stroke', '#e0ab5c');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('opacity', '0');
+    line.style.transition = 'opacity 0.6s ease ' + (i * 0.05) + 's';
+    svg.appendChild(line);
+    requestAnimationFrame(() => requestAnimationFrame(() => line.setAttribute('opacity', '0.55')));
+  }
+}
+
+/* ---------------------------------------------------------------------
+   BACKGROUND STARFIELD (ambient, decorative only)
+--------------------------------------------------------------------- */
+function drawStarsBg() {
+  const canvas = document.getElementById('starsBg');
+  const ctx = canvas.getContext('2d');
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  const stars = [];
+  const count = 140;
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.2 + 0.2,
+      tw: Math.random() * Math.PI * 2,
+    });
+  }
+  function frame(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const s of stars) {
+      const alpha = 0.35 + 0.35 * Math.sin(t / 1400 + s.tw);
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(220,225,255,${alpha.toFixed(2)})`;
+      ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------------------------------------------------------------------
+   WIRE UP CONTROLS
+--------------------------------------------------------------------- */
+document.getElementById('newBtn').addEventListener('click', () => {
+  newGame(document.getElementById('sizeSelect').value);
+});
+document.getElementById('sizeSelect').addEventListener('change', (e) => {
+  newGame(e.target.value);
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  state.assignment = Array.from({ length: state.N }, () => new Array(state.N).fill(-1));
+  state.flaggedGalaxies = null;
+  setStatus('Chart cleared. Start again.', null);
+  render();
+});
+document.getElementById('eraseBtn').addEventListener('click', (e) => {
+  state.eraseMode = !state.eraseMode;
+  e.target.classList.toggle('toggled', state.eraseMode);
+  setStatus(state.eraseMode ? 'Eraser on — drag to clear squares.' : "Select a galaxy's star, then drag across its territory.", null);
+});
+document.getElementById('checkBtn').addEventListener('click', checkSolution);
+
+drawStarsBg();
+newGame('medium');
+</script>
+</body>
+</html>
